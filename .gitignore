@@ -1,0 +1,32 @@
+# Build outputs
+build/bin/
+frontend/dist/
+
+# Dependencies
+frontend/node_modules/
+
+# Wails dev artifacts
+frontend/package.json.md5
+
+# Go binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go test / coverage
+*.test
+*.out
+coverage.txt
+
+# IDE / editor
+.idea/
+.vscode/
+*.suo
+*.user
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
