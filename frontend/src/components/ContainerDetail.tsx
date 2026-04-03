@@ -6,9 +6,10 @@ import { formatError } from '../formatError';
 import type { ContainerInfo } from '../types';
 import ExecPanel from './ExecPanel';
 import LogPanel from './LogPanel';
+import { toast } from './Toast';
 
 interface ContainerDetailProps {
-  readonly container: ContainerInfo | null;
+  readonly container: ContainerInfo;
   readonly onBack: () => void;
   readonly onRefresh: () => Promise<void>;
 }
@@ -37,18 +38,12 @@ function getToggleContent(busy: boolean, isRunning: boolean): ReactNode {
   );
 }
 
-export default function ContainerDetail({ container, onBack, onRefresh }: ContainerDetailProps) {
+export default function ContainerDetail({ container, onBack, onRefresh }: Readonly<ContainerDetailProps>) {
   const [tab, setTab] = useState<DetailTab>('logs');
   const [busy, setBusy] = useState(false);
 
-  if (!container) {
-    return null;
-  }
-
-  const activeContainer = container;
-
-  const isRunning = activeContainer.state === 'running';
-  const stateStyle = getStateStyle(activeContainer.state);
+  const isRunning = container.state === 'running';
+  const stateStyle = getStateStyle(container.state);
   const tabs: Array<{ id: DetailTab; icon: ReactNode; label: string }> = [
     { id: 'logs', icon: <ScrollText className="h-3.5 w-3.5" />, label: 'Logs' },
     { id: 'exec', icon: <Terminal className="h-3.5 w-3.5" />, label: 'Exec' },
@@ -59,14 +54,15 @@ export default function ContainerDetail({ container, onBack, onRefresh }: Contai
 
     try {
       if (isRunning) {
-        await StopContainer(activeContainer.id);
+        await StopContainer(container.id);
       } else {
-        await StartContainer(activeContainer.id);
+        await StartContainer(container.id);
       }
 
       await onRefresh();
+      toast.success(isRunning ? `Stopped ${container.name || container.shortId}` : `Started ${container.name || container.shortId}`);
     } catch (caughtError) {
-      globalThis.alert(`Error: ${formatError(caughtError)}`);
+      toast.error(formatError(caughtError));
     } finally {
       setBusy(false);
     }
@@ -86,14 +82,14 @@ export default function ContainerDetail({ container, onBack, onRefresh }: Contai
           </button>
 
           <div className="flex min-w-0 items-center gap-1.5">
-            {activeContainer.project && (
+            {container.project && (
               <>
-                <span className="shrink-0 text-sm font-medium text-zinc-400 dark:text-zinc-500">{activeContainer.project}</span>
+                <span className="shrink-0 text-sm font-medium text-zinc-400 dark:text-zinc-500">{container.project}</span>
                 <span className="shrink-0 text-zinc-300 dark:text-zinc-600">/</span>
               </>
             )}
             <span className="truncate text-[15px] font-bold text-zinc-900 dark:text-zinc-100">
-              {activeContainer.name || activeContainer.shortId}
+              {container.name || container.shortId}
             </span>
           </div>
 
@@ -105,16 +101,16 @@ export default function ContainerDetail({ container, onBack, onRefresh }: Contai
             <span>{stateStyle.label}</span>
           </span>
 
-          {activeContainer.image && (
+          {container.image && (
             <span
               className="hidden max-w-[280px] truncate rounded-md border border-zinc-200 bg-zinc-100 px-2 py-0.5 font-mono text-[11px] text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 md:block"
-              title={activeContainer.image}
+              title={container.image}
             >
-              {activeContainer.image}
+              {container.image}
             </span>
           )}
 
-          {activeContainer.ports && <span className="shrink-0 font-mono text-[11px] text-zinc-400 dark:text-zinc-500">{activeContainer.ports}</span>}
+          {container.ports && <span className="shrink-0 font-mono text-[11px] text-zinc-400 dark:text-zinc-500">{container.ports}</span>}
         </div>
 
         <button
@@ -151,9 +147,11 @@ export default function ContainerDetail({ container, onBack, onRefresh }: Contai
         ))}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {tab === 'logs' && <LogPanel container={activeContainer} />}
-        {tab === 'exec' && <ExecPanel container={activeContainer} />}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-2">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+          {tab === 'logs' && <LogPanel container={container} />}
+          {tab === 'exec' && <ExecPanel container={container} />}
+        </div>
       </div>
     </div>
   );

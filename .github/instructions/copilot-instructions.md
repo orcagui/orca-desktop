@@ -15,6 +15,31 @@
 
 ---
 
+## Global Font Settings
+
+User-configurable font settings (family, size, weight) are applied **application-wide** via CSS custom properties on `:root`:
+
+```css
+:root {
+  --font-family: 'JetBrains Mono', monospace;
+  --font-size: 13px;
+  --font-weight: 400;
+}
+body, #root {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+}
+```
+
+- All fonts are **bundled via `@fontsource/*`** packages — never rely on OS-installed fonts.
+- Available bundled fonts: JetBrains Mono, Fira Code, Source Code Pro, Roboto Mono (imported via CSS `@import` in `style.css` for weights 300–600).
+- Do **not** add OS font fallback chains (e.g. `'Consolas', 'Menlo'`) to dropdown options — bundled fonts are always available.
+- The CSS variables are set at startup and updated live in `applyFontSettings()` in `App.tsx`.
+- Every new UI component automatically inherits these settings — do **not** hardcode font families in individual components.
+
+---
+
 ## File & Folder Conventions
 
 ```
@@ -24,6 +49,7 @@ frontend/src/
       index.ts           ← barrel re-export — always update when adding a new ui file
       Badge.tsx          ← StatusBadge, CountBadge
       Button.tsx         ← IconButton, OpenButton, StartButton, StopButton
+      NavItem.tsx        ← NavItem (sidebar navigation item)
       EmptyState.tsx
       PageHeader.tsx
       ScrollBody.tsx
@@ -67,6 +93,11 @@ function MyComponent(props: any) { ... }
 ```tsx
 onClick={() => { void handleAsync(); }}
 ```
+
+### Error feedback
+- Always use `toast.error(formatError(caughtError))` for user-facing errors inside async handlers.
+- **Never** use `globalThis.alert` or `window.alert` — they block the UI thread.
+- Import toast from `./Toast` (feature components) or `../components/Toast` (from subdirectories).
 
 ### Conditionals in JSX
 - **Never** use nested ternaries in JSX — the linter will reject them.
@@ -123,6 +154,7 @@ onClick={() => { void handleAsync(); }}
 
 | Component | Import | Use case |
 |-----------|--------|----------|
+| `NavItem` | `./ui` | Sidebar nav item with icon, label, and count badge (collapsed-aware) |
 | `Spinner` | `./ui` | Loading state inside buttons |
 | `StateDot` | `./ui` | Animated/static state indicator dot |
 | `StatusBadge` | `./ui` | Coloured pill for container/resource state |

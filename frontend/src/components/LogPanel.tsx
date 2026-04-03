@@ -4,6 +4,7 @@ import { StopLogs, StreamLogs } from '../../wailsjs/go/main/App';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 import { formatError } from '../formatError';
 import type { ContainerInfo } from '../types';
+import { ConsoleView } from './ui';
 
 interface LogPanelProps {
   readonly container: ContainerInfo | null;
@@ -17,7 +18,7 @@ interface LogEntry {
 const converter = new AnsiToHtml({ newline: false, escapeXML: true });
 const btnTool = 'inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border border-zinc-200 bg-white px-2.5 text-xs font-medium text-zinc-500 transition-all hover:border-zinc-300 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-white';
 
-export default function LogPanel({ container }: LogPanelProps) {
+export default function LogPanel({ container }: Readonly<LogPanelProps>) {
   const [lines, setLines] = useState<LogEntry[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [tail, setTail] = useState(200);
@@ -26,12 +27,14 @@ export default function LogPanel({ container }: LogPanelProps) {
   const unsubscribeEndRef = useRef<(() => void) | null>(null);
   const containerIdRef = useRef<string | null>(null);
   const nextLineIdRef = useRef(0);
+  const streamAbortedRef = useRef(false);
 
   function appendLine(text: string) {
     setLines((currentLines) => [...currentLines, { id: nextLineIdRef.current++, text }]);
   }
 
   function stopStream(id: string) {
+    streamAbortedRef.current = true;
     unsubscribeLineRef.current?.();
     unsubscribeLineRef.current = null;
     unsubscribeEndRef.current?.();
@@ -42,6 +45,7 @@ export default function LogPanel({ container }: LogPanelProps) {
   }
 
   function startStream(id: string) {
+    streamAbortedRef.current = false;
     nextLineIdRef.current = 0;
     setLines([]);
     setStreaming(true);
@@ -53,10 +57,12 @@ export default function LogPanel({ container }: LogPanelProps) {
       setStreaming(false);
     });
 
-    StreamLogs(id, tail).catch((caughtError) => {
-      setLines([{ id: nextLineIdRef.current++, text: `[error] ${formatError(caughtError)}\n` }]);
-      setStreaming(false);
-    });
+    StreamLogs(id, tail)
+      .catch((caughtError: unknown) => {
+        if (streamAbortedRef.current) return;
+        setLines([{ id: nextLineIdRef.current++, text: `[error] ${formatError(caughtError)}\n` }]);
+        setStreaming(false);
+      });
   }
 
   function restartStream() {
@@ -135,7 +141,7 @@ export default function LogPanel({ container }: LogPanelProps) {
             <span>Clear</span>
           </button>
 
-          {streaming && (
+          {streaming ? (
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
               <span className="relative flex h-1.5 w-1.5 shrink-0">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -143,20 +149,27 @@ export default function LogPanel({ container }: LogPanelProps) {
               </span>
               <span>live</span>
             </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-red-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-red-600 dark:text-red-400">
+              <span className="relative flex h-1.5 w-1.5 shrink-0">
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+              </span>
+              <span>live</span>
+            </span>
           )}
         </div>
       </div>
 
-      <div className="scrollbar-none flex-1 overflow-y-auto bg-zinc-100 dark:bg-zinc-950 font-mono text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">
+      <ConsoleView className="scrollbar-none flex-1 overflow-y-auto">
         {lines.map((line) => (
           <div
             key={line.id}
-            className="odd:bg-zinc-200/40 dark:odd:bg-white/[.02] px-3.5 py-px break-all whitespace-pre-wrap hover:bg-zinc-200/60 dark:hover:bg-white/[.03]"
+            className="odd:bg-white/[.03] px-3.5 py-px break-all whitespace-pre-wrap hover:bg-white/[.05]"
             dangerouslySetInnerHTML={{ __html: converter.toHtml(line.text) }}
           />
         ))}
         <div ref={bottomRef} />
-      </div>
+      </ConsoleView>
     </div>
   );
 }

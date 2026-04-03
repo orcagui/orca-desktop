@@ -1,6 +1,44 @@
-﻿@tailwind base;
+﻿/* Bundled monospace fonts — loaded once for all devices, no OS dependency */
+@import '@fontsource/jetbrains-mono/300.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/fira-code/300.css';
+@import '@fontsource/fira-code/400.css';
+@import '@fontsource/fira-code/500.css';
+@import '@fontsource/fira-code/600.css';
+@import '@fontsource/source-code-pro/300.css';
+@import '@fontsource/source-code-pro/400.css';
+@import '@fontsource/source-code-pro/500.css';
+@import '@fontsource/source-code-pro/600.css';
+@import '@fontsource/roboto-mono/300.css';
+@import '@fontsource/roboto-mono/400.css';
+@import '@fontsource/roboto-mono/500.css';
+@import '@fontsource/roboto-mono/600.css';
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --font-family: 'JetBrains Mono', monospace;
+  --font-size: 14px;         /* clamped layout size (max 20px) — applied to html */
+  --font-size-content: 14px; /* full user-selected size — used by log/terminal output */
+  --font-weight: 400;
+}
+
+/* Apply user font settings to the entire application.
+   Setting on html so rem-based Tailwind utilities scale with it.
+   Also explicitly set on body/#root to cover inherited font-size. */
+html {
+  font-size: var(--font-size);
+}
+body,
+#root {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+}
 
 /* Thin custom scrollbar — not natively available in Tailwind */
 @layer utilities {

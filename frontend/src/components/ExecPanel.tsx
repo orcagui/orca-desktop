@@ -2,19 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
+import { Unplug } from 'lucide-react';
 import { ResizeExec, SendExecInput, StartExec, StopExec } from '../../wailsjs/go/main/App';
 import { EventsOn } from '../../wailsjs/runtime/runtime';
 import { formatError } from '../formatError';
 import type { ContainerInfo } from '../types';
+import { CONSOLE_BG } from './ui';
 
 interface ExecPanelProps {
-  container: ContainerInfo | null;
+  readonly container: ContainerInfo | null;
 }
 
-const XTERM_THEME_DARK = {
+const XTERM_THEME = {
   background: '#09090b',
   foreground: '#e4e4e7',
-  cursor: '#3b82f6',
+  cursor: '#4ade80',
   cursorAccent: '#09090b',
   selectionBackground: '#1e3a5f',
   black: '#27272a',
@@ -35,35 +37,7 @@ const XTERM_THEME_DARK = {
   brightWhite: '#f4f4f5',
 };
 
-const XTERM_THEME_LIGHT = {
-  background: '#f4f4f5',
-  foreground: '#18181b',
-  cursor: '#2563eb',
-  cursorAccent: '#f4f4f5',
-  selectionBackground: '#bfdbfe',
-  black: '#3f3f46',
-  red: '#dc2626',
-  green: '#16a34a',
-  yellow: '#d97706',
-  blue: '#2563eb',
-  magenta: '#9333ea',
-  cyan: '#0891b2',
-  white: '#52525b',
-  brightBlack: '#71717a',
-  brightRed: '#ef4444',
-  brightGreen: '#22c55e',
-  brightYellow: '#f59e0b',
-  brightBlue: '#3b82f6',
-  brightMagenta: '#a855f7',
-  brightCyan: '#06b6d4',
-  brightWhite: '#18181b',
-};
-
-function getXtermTheme() {
-  return document.documentElement.classList.contains('dark') ? XTERM_THEME_DARK : XTERM_THEME_LIGHT;
-}
-
-export default function ExecPanel({ container }: ExecPanelProps) {
+export default function ExecPanel({ container }: Readonly<ExecPanelProps>) {
   const termWrapRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -93,11 +67,15 @@ export default function ExecPanel({ container }: ExecPanelProps) {
       return;
     }
 
+    const style = getComputedStyle(document.documentElement);
+    const fontFamily = style.getPropertyValue('--font-family').trim() || "'JetBrains Mono', monospace";
+    const fontSize = Number.parseFloat(style.getPropertyValue('--font-size-content')) || 14;
+
     const terminal = new Terminal({
       cursorBlink: true,
-      fontSize: 13,
-      fontFamily: '"Cascadia Code", "SF Mono", "Fira Code", Consolas, monospace',
-      theme: getXtermTheme(),
+      fontSize,
+      fontFamily,
+      theme: XTERM_THEME,
       scrollback: 5000,
       convertEol: true,
     });
@@ -125,7 +103,7 @@ export default function ExecPanel({ container }: ExecPanelProps) {
     }
 
     const commandName = command.trim() || 'sh';
-    terminal.writeln(`\x1b[1;34mConnecting to ${container.name || container.shortId}...\x1b[0m`);
+    terminal.writeln(`\x1b[1;32mConnecting to ${container.name || container.shortId}...\x1b[0m`);
 
     let sessionId: string;
     try {
@@ -185,12 +163,26 @@ export default function ExecPanel({ container }: ExecPanelProps) {
   }
 
   useEffect(() => {
+    if (container) {
+      void startSession('sh');
+    }
     return () => {
       runCleanup();
       termRef.current?.dispose();
       termRef.current = null;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [container?.id]);
+
+  // Update xterm font whenever CSS vars change (font settings updated).
+  useEffect(() => {
+    const terminal = termRef.current;
+    if (!terminal) return;
+    const style = getComputedStyle(document.documentElement);
+    terminal.options.fontSize = Number.parseFloat(style.getPropertyValue('--font-size-content')) || 14;
+    terminal.options.fontFamily = style.getPropertyValue('--font-family').trim() || "'JetBrains Mono', monospace";
+    fitRef.current?.fit();
+  });
 
   if (!container) {
     return (
@@ -230,6 +222,7 @@ export default function ExecPanel({ container }: ExecPanelProps) {
               className="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md border border-red-500/40 bg-red-50 px-3 text-xs font-semibold text-red-700 transition-all hover:border-red-500 hover:bg-red-500 hover:text-white dark:bg-red-500/10 dark:text-red-400"
               onClick={disconnect}
             >
+              <Unplug className="h-3 w-3" />
               <span>Disconnect</span>
             </button>
           ) : (
@@ -246,7 +239,7 @@ export default function ExecPanel({ container }: ExecPanelProps) {
         </div>
       </div>
 
-      <div ref={termWrapRef} className="flex-1 min-h-0 overflow-hidden bg-[#09090b] p-1.5" />
+      <div ref={termWrapRef} className="flex-1 min-h-0 overflow-hidden p-1.5" style={{ background: CONSOLE_BG }} />
     </div>
   );
 }

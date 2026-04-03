@@ -13,6 +13,13 @@ export type NavigationSelection =
   | { kind: 'containers' }
   | { kind: 'container'; id: string }
   | { kind: 'images' }
-  | { kind: 'image'; id: string };
+  | { kind: 'image'; id: string }
+  | { kind: 'settings' };
 
 export type Theme = 'dark' | 'light';
+
+export interface FontSettings {
+  family: string;
+  size: number;
+  weight: number;
+}

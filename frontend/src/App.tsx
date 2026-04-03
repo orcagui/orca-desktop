@@ -1,15 +1,17 @@
-import { MoonIcon, SunIcon } from 'lucide-react';
+import { MoonIcon, RefreshCw, SunIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { GetDockerStatus, ListContainers, ListImages, Reconnect } from '../wailsjs/go/main/App';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import ContainerDetail from './components/ContainerDetail';
+import SettingsPanel, { defaultFontSettings } from './components/SettingsPanel';
 import ContainerList from './components/ContainerList';
 import ImageDetail from './components/ImageDetail';
 import ImagesPanel from './components/ImagesPanel';
 import SidebarTree from './components/SidebarTree';
 import { Toaster } from './components/Toast';
 import { formatError } from './formatError';
-import type { ContainerInfo, DockerStatus, ImageInfo, NavigationSelection, Theme } from './types';
+import type { ContainerInfo, DockerStatus, FontSettings, ImageInfo, NavigationSelection, Theme } from './types';
+import { Spinner } from './components/ui';
 
 const DOCKER_STATUS_EVENT = 'docker:status';
 
@@ -27,6 +29,30 @@ function getInitialTheme(): Theme {
   return theme;
 }
 
+function getInitialFontSettings(): FontSettings {
+  try {
+    const raw = localStorage.getItem('orca-font-settings');
+    if (raw) {
+      const parsed = JSON.parse(raw) as FontSettings;
+      applyFontSettings(parsed);
+      return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  const defaults = defaultFontSettings();
+  applyFontSettings(defaults);
+  return defaults;
+}
+
+function applyFontSettings(settings: FontSettings) {
+  const root = document.documentElement;
+  root.style.setProperty('--font-family', settings.family);
+  root.style.setProperty('--font-size', `${settings.size}px`);
+  root.style.setProperty('--font-size-content', `${settings.size}px`);
+  root.style.setProperty('--font-weight', String(settings.weight));
+}
+
 export default function App() {
   const [containers, setContainers] = useState<ContainerInfo[]>([]);
   const [images, setImages] = useState<ImageInfo[]>([]);
@@ -35,6 +61,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
+  const [fontSettings, setFontSettings] = useState<FontSettings>(getInitialFontSettings);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const selectionRef = useRef<NavigationSelection>({ kind: 'containers' });
@@ -46,6 +73,11 @@ export default function App() {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     localStorage.setItem('orca-theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    applyFontSettings(fontSettings);
+    localStorage.setItem('orca-font-settings', JSON.stringify(fontSettings));
+  }, [fontSettings]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -162,6 +194,10 @@ export default function App() {
   const selectedImage = selection.kind === 'image' ? images.find((image) => image.id === selection.id) ?? null : null;
 
   function renderContent() {
+    if (selection.kind === 'settings') {
+      return <SettingsPanel fontSettings={fontSettings} onFontSettingsChange={setFontSettings} />;
+    }
+
     if (selection.kind === 'container' && selectedContainer) {
       return <ContainerDetail container={selectedContainer} onBack={handleBackToContainers} onRefresh={refresh} />;
     }
@@ -235,7 +271,7 @@ export default function App() {
             title="Refresh container list"
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 transition-all hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-default disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-600 dark:hover:text-white"
           >
-            <span>{loading ? '...' : 'Refresh'}</span>
+            <span>{loading ? <Spinner /> : <RefreshCw />}</span>
           </button>
 
           <button
@@ -268,6 +304,7 @@ export default function App() {
             onToggleCollapsed={() => setSidebarCollapsed((c) => !c)}
             onSelectContainers={() => setSelection({ kind: 'containers' })}
             onSelectImages={() => setSelection({ kind: 'images' })}
+            onSelectSettings={() => setSelection({ kind: 'settings' })}
           />
         </aside>
 

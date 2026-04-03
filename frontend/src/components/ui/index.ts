@@ -6,3 +6,5 @@ export type { IconButtonVariant } from './Button';
 export { PageHeader } from './PageHeader';
 export { EmptyState } from './EmptyState';
 export { ScrollBody } from './ScrollBody';
+export { NavItem } from './NavItem';
+export { ConsoleView, CONSOLE_BG } from './ConsoleView';
